@@ -33,22 +33,4 @@ get_mean_sem <- function(df, indep_vars, order,stop) {
     return(aggregated_data)
 }
 
-clean <- function(df){
-
-    
-}
-
-data <- data.frame(
-  A = c("X", "X", "Y", "Y", "Z"),
-  B = c("M", "M", "N", "N", "M"),
-  C = c(1, 2, 3, 4, 5),
-  D = c(10, 20, 30, 40, 50),
-  E = c(12, 20, 67, 40, 50),
-  F = c(14, 15, 30, 22, 50)
-)
-
-stop<-3
-
-new_data <- get_mean_sem2(data,c("A"),c("C","D","E","F"),stop)
-print(new_data)
 
