@@ -1,6 +1,6 @@
 library(R6)
 
-# Define an R6 class
+# LinReg class
 LinReg <- R6Class(
   "LinReg",
   public = list(
@@ -40,9 +40,12 @@ LinReg <- R6Class(
     model_comparisons = function () {},
     missing_data = function () {},
     pipeline = function() {},
-    plot_regression() {}
+    plot_regression() {},
+    effect_sizes = function() {}
   )
 )
+
+# Add a similar class but for ANOVA
 
 # Create an instance of the Person class
 p <- LinReg$new("lmm", "normal")
