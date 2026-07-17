@@ -16,7 +16,18 @@ read_analysis_data <- function(spec) {
 apply_transformation <- function(data, spec) {
   dv <- default_if_null(spec$dependent_vars, character())
   transformation <- default_if_null(spec$transformation, "none")
-  if (length(dv) != 1L || identical(transformation, "none")) {
+  model_family <- default_if_null(spec$model_family, "lm")
+
+  # Transforming the response only makes sense for models that assume
+  # (approximately) Gaussian errors on the transformed scale. Non-Gaussian
+  # families (glm/glmm/tweedie/nonparametric/nonlinear/manova) already model
+  # the appropriate mean-variance relationship via their family/link, so
+  # applying a normality-driven transform on top would distort or break the
+  # fit (e.g. Tweedie/count data include zeros that box-cox-style transforms
+  # cannot handle).
+  transformable_families <- c("lm", "lmm")
+  if (length(dv) != 1L || identical(transformation, "none") ||
+      !model_family %in% transformable_families) {
     return(data)
   }
   if (!dv[1L] %in% names(data)) {
@@ -38,7 +49,8 @@ apply_transformation <- function(data, spec) {
       if (!requireNamespace("car", quietly = TRUE)) {
         stop("car is required for yeojohnson transformation.")
       }
-      car::yjPower(value, lambda = car::powerTransform(value ~ 1)$lambda)
+      lambda <- car::powerTransform(value ~ 1, family = "yjPower")$lambda
+      car::yjPower(value, lambda = lambda)
     },
     value
   )
