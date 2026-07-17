@@ -120,7 +120,6 @@ LinReg/
   R/              R statistics engine (model fitting, diagnostics, posthoc) + tests
   docker/         Dockerfile + docker-compose.yml
   examples/       Sample datasets (mtcars, repeated-measures, count data)
-  legacy/         Superseded first-draft prototype scripts, kept for reference
   CONTRACT.md     Full JSON schema + CLI flag reference + decision heuristics
 ```
 

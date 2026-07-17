@@ -48,7 +48,6 @@ LinReg/
   examples/
     mtcars.csv, repeated_measures_synthetic.csv, counts_synthetic.csv,
     zero_inflated_tweedie_synthetic.csv, nonparametric_synthetic.csv
-  legacy/                  # old prototype .r files moved here for reference
   CONTRACT.md
   README.md
 ```
