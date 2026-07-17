@@ -1,0 +1,10 @@
+click
+pandas
+numpy
+scipy
+scikit-learn
+openpyxl
+sqlalchemy
+jinja2
+markdown
+statsmodels

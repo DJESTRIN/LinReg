@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linreg_auto"
+version = "0.1.0"
+description = "Python orchestrator for LinReg statistics automation"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "click",
+  "pandas",
+  "numpy",
+  "scipy",
+  "scikit-learn",
+  "openpyxl",
+  "sqlalchemy",
+  "jinja2",
+  "markdown",
+  "statsmodels",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+linreg = "linreg_auto.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["linreg_auto*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

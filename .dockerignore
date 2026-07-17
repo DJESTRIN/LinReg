@@ -1,0 +1,12 @@
+.git/
+.gitignore
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+python/**/*.egg-info/
+python/_smoketest/
+R/**/*.Rcheck/
+docker/results/
+linreg_results/
+*.Rproj.user/
+.DS_Store

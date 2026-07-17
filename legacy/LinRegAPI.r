@@ -36,9 +36,6 @@ sql_database <- opts$sql_database
 
 # Determine if datawas given
 if (is.null(csv_file) && is.null(xlsx_file) && is.null(sql_database)) {
-  stop("Error: path to data is required. No csv, xlsx or sql database files were given")} 
-else {
+  stop("Error: path to data is required. No csv, xlsx or sql database files were given")} else {
 main(csv_file)
 }
-
-#
