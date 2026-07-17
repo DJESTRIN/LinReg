@@ -51,6 +51,7 @@ new_results <- function(spec = NULL) {
     posthoc = list(),
     effect_sizes = list(),
     diagnostic_plots = list(),
+    eda_plots = list(),
     warnings = list(),
     errors = list()
   )
@@ -71,7 +72,7 @@ merge_results <- function(results, updates) {
     return(results)
   }
   for (name in names(updates)) {
-    if (name %in% c("warnings", "errors", "diagnostic_plots", "posthoc", "effect_sizes", "model_comparison", "term_comparison", "significant_terms") &&
+    if (name %in% c("warnings", "errors", "diagnostic_plots", "eda_plots", "posthoc", "effect_sizes", "model_comparison", "term_comparison", "significant_terms") &&
         length(default_if_null(updates[[name]], list())) > 0L) {
       results[[name]] <- c(default_if_null(results[[name]], list()), updates[[name]])
     } else {
@@ -107,7 +108,8 @@ register_plot <- function(results,
                           src_path = NULL,
                           width = 7,
                           height = 5,
-                          dpi = 300) {
+                          dpi = 300,
+                          field = "diagnostic_plots") {
   ensure_output_structure(output_dir)
   target_path <- file.path(output_dir, "plots", paste0(name, ".png"))
 
@@ -131,6 +133,6 @@ register_plot <- function(results,
   }
 
   rel_path <- relative_to_output_dir(target_path, output_dir)
-  results$diagnostic_plots <- unique(c(default_if_null(results$diagnostic_plots, list()), rel_path))
+  results[[field]] <- unique(c(default_if_null(results[[field]], list()), rel_path))
   results
 }

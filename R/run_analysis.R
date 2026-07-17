@@ -20,6 +20,7 @@ source(file.path(script_dir, "R", "nonparametric.R"))
 source(file.path(script_dir, "R", "nonlinear.R"))
 source(file.path(script_dir, "R", "multivariate.R"))
 source(file.path(script_dir, "R", "diagnostics.R"))
+source(file.path(script_dir, "R", "eda_plots.R"))
 source(file.path(script_dir, "R", "posthoc.R"))
 
 suppressPackageStartupMessages(library(optparse))
@@ -51,6 +52,18 @@ run_main <- function(config_path) {
           state$results <- new_results(state$spec)
 
           data <- read_analysis_data(state$spec)
+
+          if (isTRUE(default_if_null(state$spec$make_plots, TRUE))) {
+            raw_data <- tryCatch(read_raw_data(state$spec), error = function(...) NULL)
+            if (!is.null(raw_data)) {
+              state$results <- generate_eda_plots(
+                spec = state$spec,
+                data = raw_data,
+                results = state$results,
+                output_dir = state$output_dir
+              )
+            }
+          }
 
           fit_result <- if (length(default_if_null(state$spec$dependent_vars, character())) > 1L ||
               identical(state$spec$model_family, "manova")) {

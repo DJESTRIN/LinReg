@@ -15,5 +15,6 @@ source(file.path(repo_root, "R", "R", "nonparametric.R"))
 source(file.path(repo_root, "R", "R", "multivariate.R"))
 source(file.path(repo_root, "R", "R", "posthoc.R"))
 source(file.path(repo_root, "R", "R", "diagnostics.R"))
+source(file.path(repo_root, "R", "R", "eda_plots.R"))
 
 test_dir(file.path(repo_root, "R", "tests", "testthat"))

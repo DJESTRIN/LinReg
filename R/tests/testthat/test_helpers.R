@@ -136,3 +136,49 @@ test_that("term_drop_comparison respects max_terms and returns a warning instead
   expect_equal(length(out$records), 0L)
   expect_true(grepl("Skipped", out$warning))
 })
+
+test_that("is_categorical_column identifies factor/character/logical columns", {
+  expect_true(is_categorical_column(factor(c("a", "b"))))
+  expect_true(is_categorical_column(c("a", "b")))
+  expect_true(is_categorical_column(c(TRUE, FALSE)))
+  expect_false(is_categorical_column(c(1.0, 2.0)))
+})
+
+test_that("generate_eda_plots registers overall density, grouped density/violin, and scatter plots", {
+  data <- data.frame(
+    mpg = mtcars$mpg,
+    hp = mtcars$hp,
+    cyl_group = factor(ifelse(mtcars$cyl >= 6, "high", "low"))
+  )
+  spec <- list(dependent_vars = "mpg", independent_vars = c("cyl_group", "hp"))
+  out_dir <- tempfile()
+
+  results <- generate_eda_plots(spec, data, new_results(), out_dir)
+
+  registered <- unlist(results$eda_plots)
+  expect_true(any(grepl("eda_density_mpg\\.png$", registered)))
+  expect_true(any(grepl("eda_density_mpg_by_cyl_group\\.png$", registered)))
+  expect_true(any(grepl("eda_violin_mpg_by_cyl_group\\.png$", registered)))
+  expect_true(any(grepl("eda_scatter_mpg_vs_hp\\.png$", registered)))
+  expect_true(any(grepl("eda_panel\\.png$", registered)))
+  for (path in registered) {
+    expect_true(file.exists(file.path(out_dir, path)))
+  }
+})
+
+test_that("generate_eda_plots skips grouping variables with too many or too few levels", {
+  data <- data.frame(
+    mpg = mtcars$mpg,
+    id_like = factor(seq_len(nrow(mtcars))),
+    constant_group = factor(rep("only_level", nrow(mtcars)))
+  )
+  spec <- list(dependent_vars = "mpg", independent_vars = c("id_like", "constant_group"))
+  out_dir <- tempfile()
+
+  results <- generate_eda_plots(spec, data, new_results(), out_dir)
+
+  registered <- unlist(results$eda_plots)
+  expect_false(any(grepl("id_like", registered)))
+  expect_false(any(grepl("constant_group", registered)))
+  expect_true(any(grepl("Skipped grouped EDA plots", unlist(results$warnings))))
+})

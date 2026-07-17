@@ -32,6 +32,7 @@ def test_render_reports_includes_decisions_eda_and_plots() -> None:
             "posthoc": [{"factor": "hp", "contrast": "a - b", "trigger": "significant"}],
             "effect_sizes": [],
             "diagnostic_plots": ["plots/resid_vs_fitted.png", "plots/qq.png"],
+            "eda_plots": ["plots/eda_density_mpg.png", "plots/eda_scatter_mpg_vs_hp.png"],
             "warnings": ["a warning"],
             "errors": [],
             "decision": {
@@ -66,6 +67,8 @@ def test_render_reports_includes_decisions_eda_and_plots() -> None:
 
         assert "plot-grid" in html_text
         assert "resid_vs_fitted.png" in html_text
+        assert "eda_density_mpg.png" in html_text
+        assert "eda_scatter_mpg_vs_hp.png" in html_text
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
 

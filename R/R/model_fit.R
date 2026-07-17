@@ -1,4 +1,4 @@
-read_analysis_data <- function(spec) {
+read_raw_data <- function(spec) {
   if (is.null(spec$input_csv) || !nzchar(spec$input_csv)) {
     stop("analysis_spec.json is missing input_csv.")
   }
@@ -10,7 +10,11 @@ read_analysis_data <- function(spec) {
       col
     }
   })
-  apply_transformation(data, spec)
+  data
+}
+
+read_analysis_data <- function(spec) {
+  apply_transformation(read_raw_data(spec), spec)
 }
 
 apply_transformation <- function(data, spec) {

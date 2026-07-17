@@ -81,6 +81,11 @@ _No decision log available._
 {% else %}
 _No EDA summary available._
 {% endif %}
+{% if eda_plots %}
+{% for plot in eda_plots %}
+![]({{ plot }})
+{% endfor %}
+{% endif %}
 
 ## Model summary
 
@@ -220,6 +225,16 @@ HTML_TEMPLATE = Template(
   {% else %}
   <p><em>No EDA summary available.</em></p>
   {% endif %}
+  {% if eda_plots %}
+    <div class="plot-grid">
+    {% for plot in eda_plots %}
+      <figure>
+        <img src="{{ plot }}" alt="{{ plot }}" />
+        <figcaption>{{ plot }}</figcaption>
+      </figure>
+    {% endfor %}
+    </div>
+  {% endif %}
 
   <h2>Model summary</h2>
   <ul>
@@ -302,6 +317,7 @@ def render_reports(results: Dict[str, Any], output_dir: Union[str, Path], report
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     plots = results.get("diagnostic_plots") or []
+    eda_plots = results.get("eda_plots") or []
     nonparametric_test = dict(results.get("nonparametric_test") or {})
     tables = {
         "ANOVA table": _as_list_of_dicts(results.get("anova_table") or []),
@@ -317,6 +333,7 @@ def render_reports(results: Dict[str, Any], output_dir: Union[str, Path], report
     markdown_text = MD_TEMPLATE.render(
         results=results,
         plots=plots,
+        eda_plots=eda_plots,
         decision=results.get("decision"),
         eda_table=_markdown_table(eda_rows),
         aic_display=_display_value(results.get("aic")),
@@ -338,6 +355,7 @@ def render_reports(results: Dict[str, Any], output_dir: Union[str, Path], report
     html_text = HTML_TEMPLATE.render(
         results=results,
         plots=plots,
+        eda_plots=eda_plots,
         tables=tables,
         decision=results.get("decision"),
         eda_rows=eda_rows,

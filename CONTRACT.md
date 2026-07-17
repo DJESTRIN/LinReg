@@ -128,6 +128,7 @@ infeR/
   "posthoc": [ { "factor": "group:time", "contrast": "A - B", "estimate": 0.5, "se": 0.2, "p.adj": 0.02, "trigger": "significant" }, ... ],
   "effect_sizes": [ { "term": "group", "metric": "cohen_d", "value": 0.6 }, ... ],
   "diagnostic_plots": ["plots/resid_vs_fitted.png", "plots/qq.png", "plots/scale_location.png", "plots/influence.png", "plots/vif.png", "plots/diagnostic_panel.png"],
+  "eda_plots": ["plots/eda_density_y.png", "plots/eda_density_y_by_group.png", "plots/eda_violin_y_by_group.png", "plots/eda_scatter_y_vs_covariate.png", "plots/eda_panel.png"],
   "warnings": [], "errors": []
 }
 ```
@@ -140,6 +141,19 @@ PNGs are usable directly in a manuscript or slide without further editing.
 with `patchwork`) containing residuals-vs-fitted, Q-Q, scale-location, and
 (for lm/glm) the influence panels together -- a one-glance diagnostic summary
 in addition to the individual per-plot PNGs.
+
+`eda_plots` (produced by `R/R/eda_plots.R`, `generate_eda_plots()`) are
+exploratory plots of the **raw, untransformed** data, generated independently
+of and before model fitting -- so they still exist even if the model itself
+fails to fit. For each dependent variable: an overall kernel density plot
+(`eda_density_<dv>.png`); for each categorical independent variable with
+2-10 levels, an overlaid kernel density by group (`eda_density_<dv>_by_<iv>.png`)
+and a violin+boxplot+jitter by group (`eda_violin_<dv>_by_<iv>.png`); for each
+continuous independent variable, a scatter plot with a loess trend
+(`eda_scatter_<dv>_vs_<iv>.png`). All panels for a run are also combined into
+`plots/eda_panel.png` via `patchwork`. Categorical variables with fewer than 2
+or more than 10 levels are skipped with a warning (e.g. ID-like columns)
+rather than producing an unreadable plot.
 
 After R returns `results.json`, the Python CLI (`cli.py`) adds two
 Python-only keys before rendering the report -- these are **not** written by
