@@ -82,6 +82,9 @@ def main() -> None:
 @click.option("--formula")
 @click.option("--alpha", type=float, default=0.05, show_default=True)
 @click.option("--posthoc-correction", type=click.Choice(["bonferroni", "tukey", "holm", "none"]), default="bonferroni", show_default=True)
+@click.option("--posthoc-factors", help="Comma-separated factor(s)/interaction(s) to always post-hoc test regardless of significance (e.g. 'group,group:time'). By default post-hoc tests are only auto-triggered for ANOVA terms significant at --alpha.")
+@click.option("--no-auto-posthoc", is_flag=True, default=False, help="Only run post-hoc tests for factors listed in --posthoc-factors; skip auto-triggering on significant ANOVA terms.")
+@click.option("--no-term-comparison", is_flag=True, default=False, help="Skip the automatic single-term-deletion AIC comparison (useful to save time on very large models).")
 @click.option("--report", "report_format", type=click.Choice(["html", "md", "both"]), default="both", show_default=True)
 @click.option("--no-plots", is_flag=True, default=False)
 @click.option("--r-path")
@@ -108,6 +111,9 @@ def run(
     formula: Optional[str],
     alpha: float,
     posthoc_correction: str,
+    posthoc_factors: Optional[str],
+    no_auto_posthoc: bool,
+    no_term_comparison: bool,
     report_format: str,
     no_plots: bool,
     r_path: Optional[str],
@@ -217,10 +223,11 @@ def run(
         transformation=decision.transformation,
         formula=decision.formula,
         nonlinear=NonlinearSpec(form=nonlinear_form, formula=nonlinear_formula, start=None),
-        posthoc=PosthocSpec(factors=independent_vars[:1], correction=posthoc_correction),
+        posthoc=PosthocSpec(factors=_parse_csv_list(posthoc_factors), correction=posthoc_correction, auto=not no_auto_posthoc),
         alpha=alpha,
         make_plots=not no_plots,
         candidate_families=decision.candidate_families,
+        compare_terms=not no_term_comparison,
     )
     spec.to_json(spec_path)
 

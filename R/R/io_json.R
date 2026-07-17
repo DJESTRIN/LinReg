@@ -45,6 +45,8 @@ new_results <- function(spec = NULL) {
     bic = NULL,
     logLik = NULL,
     model_comparison = list(),
+    term_comparison = list(),
+    significant_terms = list(),
     nonparametric_test = NULL,
     posthoc = list(),
     effect_sizes = list(),
@@ -69,7 +71,7 @@ merge_results <- function(results, updates) {
     return(results)
   }
   for (name in names(updates)) {
-    if (name %in% c("warnings", "errors", "diagnostic_plots", "posthoc", "effect_sizes", "model_comparison") &&
+    if (name %in% c("warnings", "errors", "diagnostic_plots", "posthoc", "effect_sizes", "model_comparison", "term_comparison", "significant_terms") &&
         length(default_if_null(updates[[name]], list())) > 0L) {
       results[[name]] <- c(default_if_null(results[[name]], list()), updates[[name]])
     } else {

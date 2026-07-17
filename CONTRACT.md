@@ -72,8 +72,11 @@ LinReg/
 | `--distribution {auto,gaussian,poisson,binomial,gamma,negbinom,tweedie}` | glm family override |
 | `--transform {auto,none,log,sqrt,boxcox,yeojohnson}` | DV transform override |
 | `--formula "y ~ x1*x2 + (1|subject)"` | full override of auto-built formula |
-| `--alpha FLOAT` | significance threshold, default 0.05 |
+| `--alpha FLOAT` | significance threshold, default 0.05 — also used to auto-trigger post-hoc tests (see below) |
 | `--posthoc-correction {bonferroni,tukey,holm,none}` | default `bonferroni` |
+| `--posthoc-factors NAME[,NAME...]` | force post-hoc comparisons for specific factors/interactions (e.g. `group,group:time`) regardless of significance; optional, in addition to auto-triggered terms |
+| `--no-auto-posthoc` | disable automatic post-hoc triggering on significant ANOVA terms; only `--posthoc-factors` are tested |
+| `--no-term-comparison` | skip the automatic single-term-deletion AIC comparison (see "Term-drop AIC comparison" below) |
 | `--report {html,md,both}` | default `both` |
 | `--no-plots` | skip diagnostic plot generation |
 | `--r-path PATH` | override `Rscript` executable location |
@@ -95,10 +98,11 @@ LinReg/
   "transformation": "none",                   // resolved; R applies it defensively too
   "formula": "y ~ group * time + (1 | subject)",
   "nonlinear": { "form": "michaelis_menten", "formula": null, "start": null },
-  "posthoc": { "factors": ["group"], "correction": "bonferroni" },
+  "posthoc": { "factors": [], "correction": "bonferroni", "auto": true }, // "factors" are ALWAYS tested (explicit override); "auto" (default true) triggers post-hoc for any ANOVA term significant at "alpha"
   "alpha": 0.05,
   "make_plots": true,
-  "candidate_families": ["lmm", "lm"]         // for auto mode: R fits all, compares AIC, reports winner
+  "candidate_families": ["lmm", "lm"],        // for auto mode: R fits all, compares AIC, reports winner
+  "compare_terms": true                        // if true (default), R also runs an efficient single-term-deletion AIC comparison (see results.json)
 }
 ```
 
@@ -117,9 +121,11 @@ LinReg/
   "coefficients": [ { "term": "(Intercept)", "estimate": 1.2, "se": 0.3, "p": 0.001 }, ... ],
   "r_squared": { "marginal": 0.31, "conditional": 0.55 },
   "aic": 245.6, "bic": 251.2, "logLik": -116.8,
-  "model_comparison": [ { "family": "lmm", "aic": 245.6 }, { "family": "lm", "aic": 260.1 } ],
+  "model_comparison": [ { "family": "lmm", "aic": 245.6, "delta_aic": 0, "aic_weight": 0.93 }, { "family": "lm", "aic": 260.1, "delta_aic": 14.5, "aic_weight": 0.07 } ],
+  "term_comparison": [ { "term": "group:time", "aic_full_model": 245.6, "aic": 268.9, "delta_aic": 23.3, "aic_weight": 0.00001, "likelihood_ratio_p": 0.0002 }, ... ], // single-term-deletion AIC comparison; see below
+  "significant_terms": [ { "term": "group:time", "p": 0.0002, "alpha": 0.05 } ], // ANOVA terms that triggered auto post-hoc
   "nonparametric_test": { "method": "stats::kruskal.test", "statistic": 7.4, "df": 2, "p": 0.025, "effect_size_metric": "epsilon_squared", "effect_size_value": 0.19 }, // optional
-  "posthoc": [ { "contrast": "A - B", "estimate": 0.5, "p.adj": 0.02 }, ... ],
+  "posthoc": [ { "factor": "group:time", "contrast": "A - B", "estimate": 0.5, "se": 0.2, "p.adj": 0.02, "trigger": "significant" }, ... ],
   "effect_sizes": [ { "term": "group", "metric": "cohen_d", "value": 0.6 }, ... ],
   "diagnostic_plots": ["plots/resid_vs_fitted.png", "plots/qq.png", "plots/cooksd.png", "plots/vif.png"],
   "warnings": [], "errors": []
@@ -153,6 +159,64 @@ populate an optional `nonparametric_test` object:
 
 `posthoc` may still be present for multi-level factor tests, using pairwise
 Wilcoxon comparisons with p-value adjustment.
+
+### Automatic post-hoc triggering on significant effects/interactions
+
+Post-hoc comparisons are not run blindly for every factor. Instead, after
+fitting the model and computing `anova_table`, R (`R/posthoc.R`) determines
+which terms — **main effects and interactions alike** — are significant at
+`spec.alpha` (excluding the intercept) and automatically runs `emmeans`
+pairwise contrasts for each one. For an interaction term such as
+`"group:time"`, the post-hoc comparison spans the full cross of the
+interacting categorical factors (e.g. `emmeans(model, ~ group * time)`),
+not just the marginal main effects — this is what lets you catch "the
+groups differ, but only at certain time points" scenarios.
+
+This behavior is controlled by:
+- `spec.alpha` — the significance threshold (default 0.05).
+- `spec.posthoc.auto` — if `true` (default), auto-trigger post-hoc tests on
+  every significant ANOVA term. If `false`, only `spec.posthoc.factors` are
+  tested.
+- `spec.posthoc.factors` — an explicit list of factors/interactions that are
+  **always** tested, regardless of significance (useful for a factor you
+  know you want reported even if it lands just above `alpha`).
+
+`results.json.significant_terms` lists every ANOVA term that cleared the
+significance threshold (whether or not post-hoc actually ran for it — e.g.
+a significant continuous-predictor term has no categorical levels to
+contrast, so it's reported here but produces no `posthoc` rows). Each row in
+`results.json.posthoc` carries a `trigger` field: `"explicit"` (from
+`spec.posthoc.factors`), `"significant"` (auto-triggered), or
+`"explicit_and_significant"` (both).
+
+### Term-drop AIC comparison (best-fit assessment for large models)
+
+In addition to the family-vs-family `model_comparison` (used when
+`candidate_families` has more than one entry), R also performs an
+**efficient single-term-deletion AIC comparison** on the winning fitted
+model, analogous to `stats::drop1` but implemented via `update()` so it
+works uniformly across `lm`/`glm`/`lmer`/`glmer`/`glmmTMB`. For each
+fixed-effect term in the formula, it refits the model with that term
+removed and reports the resulting AIC, delta-AIC (relative to the full
+model), an Akaike weight, and (where computable) a likelihood-ratio-test
+p-value comparing the reduced model to the full model. This is
+`results.json.term_comparison`.
+
+This scales **linearly** with the number of fixed-effect terms — not
+combinatorially like an exhaustive "dredge" over all term subsets — so it
+remains practical even for large models with many predictors. It is
+controlled by:
+- `spec.compare_terms` (default `true`) — set to `false` (`--no-term-comparison`)
+  to skip it entirely.
+- An internal cap (`max_terms`, default 15 in `term_drop_comparison()`) —
+  if the model has more fixed-effect terms than this, the comparison is
+  skipped with a warning rather than silently taking a long time; the user
+  is pointed at `--formula` to test specific reduced models by hand instead.
+
+Both `model_comparison` and `term_comparison` entries share the same
+`delta_aic`/`aic_weight` convention (computed by the shared
+`add_aic_weights()` helper in `R/R/model_fit.R`), so they can be rendered
+with the same report component on the Python side.
 
 ## Model-family decision heuristics (Python `decision.py`)
 

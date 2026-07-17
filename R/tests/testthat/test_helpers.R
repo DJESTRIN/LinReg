@@ -48,3 +48,91 @@ test_that("rank_biserial_effect_size is defined for two groups", {
   groups <- factor(c("A", "A", "A", "B", "B", "B"))
   expect_true(is.finite(rank_biserial_effect_size(values, groups)))
 })
+
+test_that("detect_significant_terms excludes intercept and honors alpha", {
+  anova_table <- list(
+    list(term = "(Intercept)", p = 0.0001),
+    list(term = "group", p = 0.03),
+    list(term = "time", p = 0.2),
+    list(term = "group:time", p = 0.001)
+  )
+  sig <- detect_significant_terms(anova_table, alpha = 0.05)
+  labels <- vapply(sig, function(x) x$term, character(1L))
+  expect_setequal(labels, c("group", "group:time"))
+})
+
+test_that("detect_significant_terms returns nothing for an empty anova table", {
+  expect_equal(detect_significant_terms(list(), alpha = 0.05), list())
+})
+
+test_that("posthoc_factors_for_term splits interaction terms and drops non-factor/absent columns", {
+  data <- data.frame(group = factor(c("A", "B")), time = factor(c("0", "1")), x = c(1.0, 2.0))
+  expect_equal(posthoc_factors_for_term("group:time", data), c("group", "time"))
+  expect_equal(posthoc_factors_for_term("group:x", data), "group")
+  expect_equal(posthoc_factors_for_term("missing_col", data), character())
+})
+
+test_that("add_aic_weights computes delta_aic and weights relative to the best model", {
+  comparison <- list(list(family = "a", aic = 100), list(family = "b", aic = 102), list(family = "c", aic = NULL))
+  out <- add_aic_weights(comparison)
+  expect_equal(out[[1]]$delta_aic, 0)
+  expect_equal(out[[2]]$delta_aic, 2)
+  expect_true(out[[1]]$aic_weight > out[[2]]$aic_weight)
+  expect_null(out[[3]]$delta_aic)
+})
+
+test_that("fixed_effect_terms excludes random-effect groups", {
+  expect_equal(fixed_effect_terms("y ~ group * time + (1 | subject)"), c("group", "time", "group:time"))
+})
+
+test_that("fixed_effect_terms returns empty for a formula with no fixed terms", {
+  expect_equal(fixed_effect_terms(""), character())
+})
+
+test_that("term_drop_comparison refits a glm fitted inside a function without 'object not found' errors", {
+  # Regression test: stats::update() re-evaluates the model's stored call in
+  # the caller's frame, not the frame it was originally fitted in. If the
+  # model was built inside a helper function using local variables named
+  # `data`/`distribution` (as fit_glm_model does), update() will fail to
+  # resolve those symbols unless term_drop_comparison forwards `data` and
+  # `family` explicitly.
+  fit_like_pipeline <- function(data) {
+    distribution <- "gaussian"
+    stats::glm(mpg ~ hp * wt, data = data, family = stats::gaussian())
+  }
+  model <- fit_like_pipeline(mtcars)
+  spec <- list(formula = "mpg ~ hp * wt")
+
+  out <- term_drop_comparison(model, spec, data = mtcars)
+  expect_null(out$warning)
+  expect_equal(length(out$records), 3L)
+  terms_seen <- vapply(out$records, function(x) x$term, character(1L))
+  expect_setequal(terms_seen, c("hp", "wt", "hp:wt"))
+  for (record in out$records) {
+    expect_null(record$error)
+    expect_true(is.numeric(record$aic))
+  }
+})
+
+test_that("term_drop_comparison does not forward family= to a plain lm call", {
+  fit_like_pipeline <- function(data) {
+    stats::lm(mpg ~ hp * wt, data = data)
+  }
+  model <- fit_like_pipeline(mtcars)
+  spec <- list(formula = "mpg ~ hp * wt")
+
+  out <- term_drop_comparison(model, spec, data = mtcars)
+  expect_null(out$warning)
+  for (record in out$records) {
+    expect_null(record$error)
+  }
+})
+
+test_that("term_drop_comparison respects max_terms and returns a warning instead of erroring", {
+  model <- stats::lm(mpg ~ hp * wt, data = mtcars)
+  spec <- list(formula = "mpg ~ hp * wt")
+
+  out <- term_drop_comparison(model, spec, data = mtcars, max_terms = 1L)
+  expect_equal(length(out$records), 0L)
+  expect_true(grepl("Skipped", out$warning))
+})

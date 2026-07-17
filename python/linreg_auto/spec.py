@@ -22,11 +22,16 @@ class NonlinearSpec:
 class PosthocSpec:
     factors: List[str] = field(default_factory=list)
     correction: str = "bonferroni"
+    auto: bool = True
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "PosthocSpec":
         data = data or {}
-        return cls(factors=list(data.get("factors") or []), correction=data.get("correction", "bonferroni"))
+        return cls(
+            factors=list(data.get("factors") or []),
+            correction=data.get("correction", "bonferroni"),
+            auto=bool(data.get("auto", True)),
+        )
 
 
 @dataclass
@@ -47,6 +52,7 @@ class AnalysisSpec:
     alpha: float = 0.05
     make_plots: bool = True
     candidate_families: List[str] = field(default_factory=list)
+    compare_terms: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         payload = asdict(self)
@@ -80,6 +86,7 @@ class AnalysisSpec:
             alpha=float(data.get("alpha", 0.05)),
             make_plots=bool(data.get("make_plots", True)),
             candidate_families=list(data.get("candidate_families") or []),
+            compare_terms=bool(data.get("compare_terms", True)),
         )
 
     @classmethod
@@ -109,6 +116,8 @@ class Results:
     bic: Optional[float] = None
     logLik: Optional[float] = None
     model_comparison: List[Dict[str, Any]] = field(default_factory=list)
+    term_comparison: List[Dict[str, Any]] = field(default_factory=list)
+    significant_terms: List[Dict[str, Any]] = field(default_factory=list)
     nonparametric_test: Dict[str, Any] = field(default_factory=dict)
     posthoc: List[Dict[str, Any]] = field(default_factory=list)
     effect_sizes: List[Dict[str, Any]] = field(default_factory=list)
@@ -143,6 +152,8 @@ class Results:
             bic=data.get("bic"),
             logLik=data.get("logLik"),
             model_comparison=list(data.get("model_comparison") or []),
+            term_comparison=list(data.get("term_comparison") or []),
+            significant_terms=list(data.get("significant_terms") or []),
             nonparametric_test=dict(data.get("nonparametric_test") or {}),
             posthoc=list(data.get("posthoc") or []),
             effect_sizes=list(data.get("effect_sizes") or []),

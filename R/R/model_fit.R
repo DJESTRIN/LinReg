@@ -388,6 +388,105 @@ fit_single_family <- function(spec, data, family_name = NULL) {
   )
 }
 
+add_aic_weights <- function(comparison) {
+  # Adds delta_aic (relative to the best/lowest AIC) and Akaike weights to a
+  # list of {..., aic} records. Records with a missing/NULL aic are left
+  # untouched (delta_aic/aic_weight stay NULL) so failed candidates don't
+  # distort the weighting of the ones that actually fit.
+  aic_values <- vapply(comparison, function(item) default_if_null(item$aic, NA_real_), numeric(1L))
+  finite_idx <- which(is.finite(aic_values))
+  if (length(finite_idx) == 0L) {
+    return(comparison)
+  }
+  best_aic <- min(aic_values[finite_idx])
+  deltas <- aic_values - best_aic
+  rel_likelihood <- exp(-0.5 * deltas)
+  weight_denom <- sum(rel_likelihood[finite_idx])
+  for (i in finite_idx) {
+    comparison[[i]]$delta_aic <- safe_as_numeric(deltas[i])
+    comparison[[i]]$aic_weight <- if (weight_denom > 0) safe_as_numeric(rel_likelihood[i] / weight_denom) else NULL
+  }
+  comparison
+}
+
+# Fixed-effect term names on the RHS of a formula, excluding any lme4-style
+# random-effect groups such as (1 | subject) or (time | subject).
+fixed_effect_terms <- function(formula_string) {
+  stripped <- strip_random_effects(formula_string)
+  if (is.null(stripped) || !nzchar(stripped)) {
+    return(character())
+  }
+  term_labels <- tryCatch(attr(stats::terms(stats::as.formula(stripped)), "term.labels"), error = function(...) character())
+  default_if_null(term_labels, character())
+}
+
+# Efficient single-term-deletion AIC comparison (analogous to stats::drop1
+# but implemented via update() so it works uniformly across lm/glm/lmer/
+# glmer/glmmTMB). This scales linearly with the number of fixed-effect terms
+# rather than combinatorially, so it stays practical for large models with
+# many predictors -- unlike an exhaustive "dredge" over all term subsets.
+term_drop_comparison <- function(model, spec, data = NULL, max_terms = 15L) {
+  terms_in_model <- fixed_effect_terms(spec$formula)
+  if (length(terms_in_model) == 0L) {
+    return(list(records = list(), warning = NULL))
+  }
+  if (length(terms_in_model) > max_terms) {
+    return(list(
+      records = list(),
+      warning = sprintf(
+        "Skipped automatic single-term-deletion AIC comparison: model has %d fixed-effect terms (limit %d). Use --formula to test specific reduced models instead.",
+        length(terms_in_model), max_terms
+      )
+    ))
+  }
+
+  full_aic <- tryCatch(stats::AIC(model), error = function(...) NA_real_)
+  # NB: stats::update() re-evaluates the model's original call in the
+  # *caller's* frame (parent.frame()), not the environment the model was
+  # originally fitted in -- so any symbols referenced by that call (the
+  # `data` argument, and for GLMs a `family` expression built from a local
+  # `distribution` variable) must be supplied explicitly here, or the
+  # refit will fail with "object not found" errors.
+  update_args <- list()
+  if (!is.null(data)) update_args$data <- data
+  # Only forward `family` if the model's original call actually used one
+  # (e.g. glm/glmer/glmmTMB) -- passing family= to update() on a plain
+  # lm/lmer call errors with "unused argument".
+  original_call <- tryCatch(stats::getCall(model), error = function(...) NULL)
+  if (!is.null(original_call) && "family" %in% names(original_call)) {
+    model_family <- tryCatch(stats::family(model), error = function(...) NULL)
+    if (!is.null(model_family)) update_args$family <- model_family
+  }
+  records <- lapply(terms_in_model, function(term_label) {
+    reduced <- tryCatch(
+      do.call(stats::update, c(list(model, stats::as.formula(paste("~ . -", term_label))), update_args)),
+      error = function(...) tryCatch(
+        do.call(stats::update, c(list(model, stats::as.formula(paste("~ . -", sprintf("`%s`", term_label)))), update_args)),
+        error = function(...) NULL
+      )
+    )
+    if (is.null(reduced)) {
+      return(list(term = term_label, aic = NULL, error = "Could not refit model without this term (likely required by marginality with an interaction)."))
+    }
+    reduced_aic <- tryCatch(stats::AIC(reduced), error = function(...) NA_real_)
+    lrt_p <- tryCatch({
+      comparison <- stats::anova(reduced, model)
+      p_col <- grep("Pr\\(>Chisq\\)|Pr\\(>Chi\\)|Pr\\(>F\\)", names(comparison), value = TRUE)[1L]
+      if (is.na(p_col)) NULL else safe_as_numeric(comparison[[p_col]][nrow(comparison)])
+    }, error = function(...) NULL)
+    list(
+      term = term_label,
+      aic_full_model = safe_as_numeric(full_aic),
+      aic = safe_as_numeric(reduced_aic),
+      likelihood_ratio_p = lrt_p
+    )
+  })
+
+  valid <- Filter(function(x) is.null(x$error), records)
+  invalid <- Filter(function(x) !is.null(x$error), records)
+  list(records = c(add_aic_weights(valid), invalid), warning = NULL)
+}
+
 fit_analysis_model <- function(spec, data) {
   candidates <- unique(default_if_null(spec$candidate_families, default_if_null(spec$model_family, "lm")))
   candidates <- Filter(Negate(is.null), candidates)
@@ -417,11 +516,20 @@ fit_analysis_model <- function(spec, data) {
 
   best_index <- which.min(vapply(valid_fits, function(item) default_if_null(item$aic, Inf), numeric(1L)))
   best_fit <- valid_fits[[best_index]]
-  best_fit$results$model_comparison <- comparison
+  best_fit$results$model_comparison <- add_aic_weights(comparison)
   best_fit$results$warnings <- lapply(
     Filter(function(x) !is.null(x$error), fits),
     function(x) paste(sprintf("Candidate family '%s' failed:", x$family), x$error)
   )
+
+  if (isTRUE(default_if_null(spec$compare_terms, TRUE)) && !is.null(best_fit$model)) {
+    fit_data <- default_if_null(best_fit$data_used, data)
+    term_comparison <- tryCatch(term_drop_comparison(best_fit$model, spec, data = fit_data), error = function(err) list(records = list(), warning = conditionMessage(err)))
+    best_fit$results$term_comparison <- term_comparison$records
+    if (!is.null(term_comparison$warning)) {
+      best_fit$results$warnings <- c(best_fit$results$warnings, list(term_comparison$warning))
+    }
+  }
 
   list(
     results = best_fit$results,

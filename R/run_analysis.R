@@ -73,9 +73,7 @@ run_main <- function(config_path) {
             )
           }
 
-          if (!is.null(fit_result$posthoc_model) &&
-              !is.null(state$spec$posthoc) &&
-              length(default_if_null(state$spec$posthoc$factors, character())) > 0L) {
+          if (!is.null(fit_result$posthoc_model)) {
             state$results <- run_posthoc(
               spec = state$spec,
               model = fit_result$posthoc_model,

@@ -65,6 +65,14 @@ MD_TEMPLATE = Template(
 
 {{ comparison_table }}
 
+## Term-drop AIC comparison
+
+{{ term_comparison_table }}
+
+## Significant terms (auto post-hoc trigger)
+
+{{ significant_terms_table }}
+
 ## Post-hoc results
 
 {{ posthoc_table }}
@@ -201,6 +209,8 @@ def render_reports(results: Dict[str, Any], output_dir: Union[str, Path], report
         "ANOVA table": _as_list_of_dicts(results.get("anova_table") or []),
         "Coefficients": _as_list_of_dicts(results.get("coefficients") or []),
         "Model comparison": _as_list_of_dicts(results.get("model_comparison") or []),
+        "Term-drop AIC comparison": _as_list_of_dicts(results.get("term_comparison") or []),
+        "Significant terms (auto post-hoc trigger)": _as_list_of_dicts(results.get("significant_terms") or []),
         "Post-hoc results": _as_list_of_dicts(results.get("posthoc") or []),
         "Effect sizes": _as_list_of_dicts(results.get("effect_sizes") or []),
     }
@@ -218,6 +228,8 @@ def render_reports(results: Dict[str, Any], output_dir: Union[str, Path], report
         anova_table=_markdown_table(tables["ANOVA table"]),
         coefficients_table=_markdown_table(tables["Coefficients"]),
         comparison_table=_markdown_table(tables["Model comparison"]),
+        term_comparison_table=_markdown_table(tables["Term-drop AIC comparison"]),
+        significant_terms_table=_markdown_table(tables["Significant terms (auto post-hoc trigger)"]),
         posthoc_table=_markdown_table(tables["Post-hoc results"]),
         effect_sizes_table=_markdown_table(tables["Effect sizes"]),
     )
