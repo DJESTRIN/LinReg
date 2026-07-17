@@ -122,6 +122,7 @@ class Results:
     posthoc: List[Dict[str, Any]] = field(default_factory=list)
     effect_sizes: List[Dict[str, Any]] = field(default_factory=list)
     diagnostic_plots: List[str] = field(default_factory=list)
+    eda_plots: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
 
@@ -158,6 +159,7 @@ class Results:
             posthoc=list(data.get("posthoc") or []),
             effect_sizes=list(data.get("effect_sizes") or []),
             diagnostic_plots=list(data.get("diagnostic_plots") or []),
+            eda_plots=list(data.get("eda_plots") or []),
             warnings=list(data.get("warnings") or []),
             errors=list(data.get("errors") or []),
         )
