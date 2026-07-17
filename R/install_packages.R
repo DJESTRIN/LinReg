@@ -11,6 +11,7 @@ required_packages <- c(
   "nlme",
   "MASS",
   "ggplot2",
+  "patchwork",
   "performance",
   "nortest",
   "coin",

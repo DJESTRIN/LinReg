@@ -231,6 +231,16 @@ def run(
     )
     spec.to_json(spec_path)
 
+    decision_info = {
+        "shape_used": detected_shape,
+        "shape_rationale": shape_reason,
+        "resolved_model_family": decision.model_family,
+        "resolved_distribution": decision.distribution,
+        "resolved_transformation": decision.transformation,
+        "candidate_families": decision.candidate_families,
+        "rationale": list(decision.rationale),
+    }
+
     click.echo("Decision summary:")
     click.echo(f"- Shape used: {detected_shape}")
     click.echo(f"- Shape rationale: {shape_reason}")
@@ -252,6 +262,9 @@ def run(
         return
 
     results = run_r_analysis(spec_path, r_path=r_path)
+    results["decision"] = decision_info
+    results["eda_summary"] = eda_summary
+    (output_dir / "results.json").write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
     render_reports(results, output_dir, report_format=report_format)
     click.echo(f"Results written to {output_dir}")
 

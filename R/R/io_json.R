@@ -107,7 +107,7 @@ register_plot <- function(results,
                           src_path = NULL,
                           width = 7,
                           height = 5,
-                          dpi = 120) {
+                          dpi = 300) {
   ensure_output_structure(output_dir)
   target_path <- file.path(output_dir, "plots", paste0(name, ".png"))
 

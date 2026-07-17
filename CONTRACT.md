@@ -127,8 +127,40 @@ infeR/
   "nonparametric_test": { "method": "stats::kruskal.test", "statistic": 7.4, "df": 2, "p": 0.025, "effect_size_metric": "epsilon_squared", "effect_size_value": 0.19 }, // optional
   "posthoc": [ { "factor": "group:time", "contrast": "A - B", "estimate": 0.5, "se": 0.2, "p.adj": 0.02, "trigger": "significant" }, ... ],
   "effect_sizes": [ { "term": "group", "metric": "cohen_d", "value": 0.6 }, ... ],
-  "diagnostic_plots": ["plots/resid_vs_fitted.png", "plots/qq.png", "plots/cooksd.png", "plots/vif.png"],
+  "diagnostic_plots": ["plots/resid_vs_fitted.png", "plots/qq.png", "plots/scale_location.png", "plots/influence.png", "plots/vif.png", "plots/diagnostic_panel.png"],
   "warnings": [], "errors": []
+}
+```
+
+Every plot listed in `diagnostic_plots` is a `ggplot2` object rendered through
+`register_plot(..., plot = <ggplot object>)` in `R/R/diagnostics.R`, styled
+with the shared `theme_publication()` (see `R/R/theme.R`) at 300 DPI so the
+PNGs are usable directly in a manuscript or slide without further editing.
+`plots/diagnostic_panel.png` is a single combined multi-panel figure (built
+with `patchwork`) containing residuals-vs-fitted, Q-Q, scale-location, and
+(for lm/glm) the influence panels together -- a one-glance diagnostic summary
+in addition to the individual per-plot PNGs.
+
+After R returns `results.json`, the Python CLI (`cli.py`) adds two
+Python-only keys before rendering the report -- these are **not** written by
+R and are not part of the R-side contract, but they flow into
+`report.html`/`report.md` so every rendered report is a single file
+containing the full decision trail, EDA, statistics, and plots for that run:
+
+```jsonc
+{
+  "decision": {
+    "shape_used": "long",
+    "shape_rationale": "id_col/time_col provided; treating input as long.",
+    "resolved_model_family": "lmm",
+    "resolved_distribution": "gaussian",
+    "resolved_transformation": "none",
+    "candidate_families": ["lmm", "lm"],
+    "rationale": ["Random effects or repeated ids were detected; considering mixed-effects families.", "..."]
+  },
+  "eda_summary": {
+    "y": { "distribution": "continuous", "normality": {"normal": true, "p": 0.4}, "transform": {"selected": "none"}, "summary": {"n": 72, "mean": 10.1} }
+  }
 }
 ```
 

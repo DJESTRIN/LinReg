@@ -9,9 +9,11 @@ runner_path <- if (length(file_arg) > 0) {
 }
 repo_root <- normalizePath(file.path(dirname(runner_path), "..", ".."), winslash = "\\")
 source(file.path(repo_root, "R", "R", "io_json.R"))
+source(file.path(repo_root, "R", "R", "theme.R"))
 source(file.path(repo_root, "R", "R", "model_fit.R"))
 source(file.path(repo_root, "R", "R", "nonparametric.R"))
 source(file.path(repo_root, "R", "R", "multivariate.R"))
 source(file.path(repo_root, "R", "R", "posthoc.R"))
+source(file.path(repo_root, "R", "R", "diagnostics.R"))
 
 test_dir(file.path(repo_root, "R", "tests", "testthat"))

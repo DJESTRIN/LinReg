@@ -14,6 +14,7 @@ get_script_dir <- function() {
 
 script_dir <- get_script_dir()
 source(file.path(script_dir, "R", "io_json.R"))
+source(file.path(script_dir, "R", "theme.R"))
 source(file.path(script_dir, "R", "model_fit.R"))
 source(file.path(script_dir, "R", "nonparametric.R"))
 source(file.path(script_dir, "R", "nonlinear.R"))

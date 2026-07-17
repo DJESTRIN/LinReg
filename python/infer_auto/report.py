@@ -30,8 +30,57 @@ def _display_value(value: Any) -> str:
     return str(value)
 
 
+def _condense_eda_summary(eda_summary: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Flatten the (fairly deep) EDA summary produced by eda.py into a single
+    row per dependent variable, for compact display in the report instead of
+    dumping the full nested dict."""
+    rows: List[Dict[str, Any]] = []
+    for name, summary in (eda_summary or {}).items():
+        normality = summary.get("normality") or {}
+        transform = summary.get("transform") or {}
+        stats = summary.get("summary") or {}
+        rows.append(
+            {
+                "variable": name,
+                "distribution": summary.get("distribution"),
+                "normal": normality.get("normal"),
+                "normality_p": normality.get("p"),
+                "skew": normality.get("skew"),
+                "suggested_transform": transform.get("selected"),
+                "n": stats.get("n"),
+                "mean": stats.get("mean"),
+                "variance": stats.get("variance"),
+                "min": stats.get("min"),
+                "max": stats.get("max"),
+            }
+        )
+    return rows
+
+
 MD_TEMPLATE = Template(
     """# infeR Analysis Report
+
+## Modeling decisions
+{% if decision %}
+- **Data shape used:** {{ decision.shape_used }} ({{ decision.shape_rationale }})
+- **Resolved model family:** {{ decision.resolved_model_family }}
+- **Resolved distribution:** {{ decision.resolved_distribution }}
+- **Resolved transformation:** {{ decision.resolved_transformation }}
+- **Candidate families considered:** {{ decision.candidate_families | join(", ") }}
+- **Decision rationale:**
+{% for item in decision.rationale %}
+  - {{ item }}
+{% endfor %}
+{% else %}
+_No decision log available._
+{% endif %}
+
+## Exploratory data analysis
+{% if eda_table %}
+{{ eda_table }}
+{% else %}
+_No EDA summary available._
+{% endif %}
 
 ## Model summary
 
@@ -117,10 +166,18 @@ HTML_TEMPLATE = Template(
   <meta charset="utf-8" />
   <title>infeR Analysis Report</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-    img { max-width: 100%; margin-bottom: 1rem; }
+    body { font-family: "Georgia", "Times New Roman", serif; margin: 0 auto; max-width: 980px; padding: 2rem; color: #1a1a1a; line-height: 1.5; }
+    h1 { border-bottom: 3px solid #2C7FB8; padding-bottom: 0.4rem; }
+    h2 { border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; margin-top: 2rem; color: #1b4f72; }
+    h3 { color: #2C7FB8; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 0.92rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem 0.7rem; text-align: left; }
+    th { background: #f2f6fa; }
+    tr:nth-child(even) { background: #fafbfc; }
+    .plot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .plot-grid figure { margin: 0; text-align: center; }
+    .plot-grid figcaption { font-size: 0.85rem; color: #555; margin-top: 0.3rem; }
+    img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; }
     .notice { padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px; }
     .warning { background: #fff7d6; }
     .error { background: #ffe0e0; }
@@ -128,6 +185,42 @@ HTML_TEMPLATE = Template(
 </head>
 <body>
   <h1>infeR Analysis Report</h1>
+
+  <h2>Modeling decisions</h2>
+  {% if decision %}
+  <ul>
+    <li><strong>Data shape used:</strong> {{ decision.shape_used }} ({{ decision.shape_rationale }})</li>
+    <li><strong>Resolved model family:</strong> {{ decision.resolved_model_family }}</li>
+    <li><strong>Resolved distribution:</strong> {{ decision.resolved_distribution }}</li>
+    <li><strong>Resolved transformation:</strong> {{ decision.resolved_transformation }}</li>
+    <li><strong>Candidate families considered:</strong> {{ decision.candidate_families | join(", ") }}</li>
+  </ul>
+  <p><strong>Decision rationale:</strong></p>
+  <ul>
+    {% for item in decision.rationale %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p><em>No decision log available.</em></p>
+  {% endif %}
+
+  <h2>Exploratory data analysis</h2>
+  {% if eda_rows %}
+  <table>
+    <thead>
+      <tr>{% for key in eda_rows[0].keys() %}<th>{{ key }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+      {% for row in eda_rows %}
+      <tr>{% for value in row.values() %}<td>{{ value }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p><em>No EDA summary available.</em></p>
+  {% endif %}
+
   <h2>Model summary</h2>
   <ul>
     <li><strong>Model family:</strong> {{ results.model_family_used or results.model_family }}</li>
@@ -174,9 +267,14 @@ HTML_TEMPLATE = Template(
 
   <h2>Diagnostic plots</h2>
   {% if plots %}
+    <div class="plot-grid">
     {% for plot in plots %}
-    <div><img src="{{ plot }}" alt="{{ plot }}" /></div>
+      <figure>
+        <img src="{{ plot }}" alt="{{ plot }}" />
+        <figcaption>{{ plot }}</figcaption>
+      </figure>
     {% endfor %}
+    </div>
   {% else %}
     <p><em>No diagnostic plots provided.</em></p>
   {% endif %}
@@ -214,10 +312,13 @@ def render_reports(results: Dict[str, Any], output_dir: Union[str, Path], report
         "Post-hoc results": _as_list_of_dicts(results.get("posthoc") or []),
         "Effect sizes": _as_list_of_dicts(results.get("effect_sizes") or []),
     }
+    eda_rows = _condense_eda_summary(results.get("eda_summary") or {})
 
     markdown_text = MD_TEMPLATE.render(
         results=results,
         plots=plots,
+        decision=results.get("decision"),
+        eda_table=_markdown_table(eda_rows),
         aic_display=_display_value(results.get("aic")),
         bic_display=_display_value(results.get("bic")),
         loglik_display=_display_value(results.get("logLik")),
@@ -238,6 +339,8 @@ def render_reports(results: Dict[str, Any], output_dir: Union[str, Path], report
         results=results,
         plots=plots,
         tables=tables,
+        decision=results.get("decision"),
+        eda_rows=eda_rows,
         aic_display=_display_value(results.get("aic")),
         bic_display=_display_value(results.get("bic")),
         loglik_display=_display_value(results.get("logLik")),

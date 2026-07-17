@@ -33,41 +33,89 @@ has_multiple_predictors <- function(model) {
 
 safe_register_diagnostic <- function(results, output_dir, name, plot_fn) {
   tryCatch(
-    register_plot(results, output_dir, name, plot_expr = plot_fn),
+    register_plot(results, output_dir, name, plot = plot_fn()),
     error = function(err) append_result_message(results, "warnings", sprintf("Skipped diagnostic plot '%s': %s", name, conditionMessage(err)))
   )
 }
 
+# All diagnostic figures are built with ggplot2 and the shared
+# theme_publication() styling (see theme.R) so they are consistent and ready
+# to drop directly into a manuscript/report without further editing.
+
 plot_residuals_vs_fitted <- function(model) {
-  fitted_vals <- extract_fitted(model)
-  residuals_vals <- extract_residuals(model)
-  plot(fitted_vals, residuals_vals, xlab = "Fitted values", ylab = "Residuals", main = "Residuals vs Fitted")
-  abline(h = 0, lty = 2, col = "red")
+  df <- data.frame(fitted = as.numeric(extract_fitted(model)), resid = as.numeric(extract_residuals(model)))
+  ggplot2::ggplot(df, ggplot2::aes(x = fitted, y = resid)) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "firebrick", linewidth = 0.6) +
+    ggplot2::geom_point(shape = 21, size = 2.2, fill = "#2C7FB8", color = "black", alpha = 0.85, stroke = 0.3) +
+    ggplot2::geom_smooth(method = "loess", formula = y ~ x, se = FALSE, color = "grey30", linewidth = 0.6) +
+    ggplot2::labs(title = "Residuals vs Fitted", x = "Fitted values", y = "Residuals") +
+    theme_publication()
 }
 
 plot_qq <- function(model) {
-  res <- extract_residuals(model)
-  qqnorm(res, main = "Normal Q-Q")
-  qqline(res, col = "red")
+  res <- stats::na.omit(as.numeric(extract_residuals(model)))
+  df <- data.frame(sample = res)
+  ggplot2::ggplot(df, ggplot2::aes(sample = sample)) +
+    ggplot2::stat_qq_line(color = "firebrick", linetype = "dashed", linewidth = 0.6) +
+    ggplot2::stat_qq(shape = 21, size = 2.2, fill = "#2C7FB8", color = "black", alpha = 0.85, stroke = 0.3) +
+    ggplot2::labs(title = "Normal Q-Q", x = "Theoretical quantiles", y = "Sample quantiles") +
+    theme_publication()
 }
 
 plot_scale_location <- function(model) {
-  fitted_vals <- extract_fitted(model)
-  std_res <- standardized_residuals(model)
-  plot(fitted_vals, sqrt(abs(std_res)), xlab = "Fitted values", ylab = expression(sqrt("|Standardized residuals|")), main = "Scale-Location")
+  df <- data.frame(
+    fitted = as.numeric(extract_fitted(model)),
+    sqrt_std_resid = sqrt(abs(as.numeric(standardized_residuals(model))))
+  )
+  ggplot2::ggplot(df, ggplot2::aes(x = fitted, y = sqrt_std_resid)) +
+    ggplot2::geom_point(shape = 21, size = 2.2, fill = "#2C7FB8", color = "black", alpha = 0.85, stroke = 0.3) +
+    ggplot2::geom_smooth(method = "loess", formula = y ~ x, se = FALSE, color = "grey30", linewidth = 0.6) +
+    ggplot2::labs(
+      title = "Scale-Location",
+      x = "Fitted values",
+      y = expression(sqrt("|Standardized residuals|"))
+    ) +
+    theme_publication()
+}
+
+plot_cooks_distance <- function(model) {
+  cooks <- as.numeric(stats::cooks.distance(model))
+  idx <- seq_along(cooks)
+  ggplot2::ggplot(data.frame(idx = idx, cooks = cooks), ggplot2::aes(x = idx, y = cooks)) +
+    ggplot2::geom_segment(ggplot2::aes(xend = idx, y = 0, yend = cooks), color = "#2C7FB8", linewidth = 0.5) +
+    ggplot2::labs(title = "Cook's Distance", x = "Observation index", y = "Cook's D") +
+    theme_publication()
+}
+
+plot_leverage <- function(model) {
+  lev <- as.numeric(stats::hatvalues(model))
+  idx <- seq_along(lev)
+  ggplot2::ggplot(data.frame(idx = idx, lev = lev), ggplot2::aes(x = idx, y = lev)) +
+    ggplot2::geom_segment(ggplot2::aes(xend = idx, y = 0, yend = lev), color = "#D95F02", linewidth = 0.5) +
+    ggplot2::labs(title = "Leverage", x = "Observation index", y = "Hat values") +
+    theme_publication()
 }
 
 plot_influence <- function(model) {
-  par(mfrow = c(1, 2))
-  cooks <- stats::cooks.distance(model)
-  lev <- stats::hatvalues(model)
-  plot(cooks, type = "h", main = "Cook's Distance", ylab = "Cook's D")
-  plot(lev, type = "h", main = "Leverage", ylab = "Hat values")
+  cooks_plot <- plot_cooks_distance(model)
+  leverage_plot <- plot_leverage(model)
+
+  if (requireNamespace("patchwork", quietly = TRUE)) {
+    cooks_plot + leverage_plot
+  } else {
+    cooks_plot
+  }
 }
 
-plot_vif_base <- function(vif_values) {
-  barplot(vif_values, las = 2, ylab = "VIF", main = "Variance Inflation Factors")
-  abline(h = 5, col = "red", lty = 2)
+plot_vif <- function(vif_values) {
+  df <- data.frame(term = names(vif_values), vif = as.numeric(vif_values))
+  df$term <- factor(df$term, levels = df$term[order(df$vif)])
+  ggplot2::ggplot(df, ggplot2::aes(x = term, y = vif)) +
+    ggplot2::geom_col(fill = "#2C7FB8", color = "black", width = 0.6) +
+    ggplot2::geom_hline(yintercept = 5, linetype = "dashed", color = "firebrick", linewidth = 0.6) +
+    ggplot2::coord_flip() +
+    ggplot2::labs(title = "Variance Inflation Factors", x = NULL, y = "VIF") +
+    theme_publication()
 }
 
 generate_vif_plot <- function(model, spec, data, results, output_dir) {
@@ -83,11 +131,9 @@ generate_vif_plot <- function(model, spec, data, results, output_dir) {
     if (is.null(collinearity) || !"VIF" %in% names(collinearity)) {
       return(results)
     }
-    return(register_plot(
-      results,
-      output_dir,
-      "vif",
-      plot_expr = function() plot_vif_base(stats::setNames(collinearity$VIF, collinearity$Term))
+    return(safe_register_diagnostic(
+      results, output_dir, "vif",
+      function() plot_vif(stats::setNames(collinearity$VIF, collinearity$Term))
     ))
   }
 
@@ -98,12 +144,45 @@ generate_vif_plot <- function(model, spec, data, results, output_dir) {
   if (is.matrix(vif_values)) {
     vif_values <- vif_values[, 1L]
   }
-  register_plot(
-    results,
-    output_dir,
-    "vif",
-    plot_expr = function() plot_vif_base(vif_values)
+  safe_register_diagnostic(results, output_dir, "vif", function() plot_vif(vif_values))
+}
+
+# Combine the core diagnostic panels (residuals vs fitted, Q-Q, scale-
+# location, and influence when available) into a single multi-panel figure
+# via patchwork, in addition to registering each panel individually. This
+# gives a one-glance publication-ready diagnostic figure alongside the
+# per-plot images used in the report.
+generate_combined_panel <- function(model, results, output_dir) {
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    return(results)
+  }
+  panels <- list(
+    tryCatch(plot_residuals_vs_fitted(model), error = function(...) NULL),
+    tryCatch(plot_qq(model), error = function(...) NULL),
+    tryCatch(plot_scale_location(model), error = function(...) NULL)
   )
+  if (inherits(model, "lm") || inherits(model, "glm")) {
+    panels <- c(
+      panels,
+      list(
+        tryCatch(plot_cooks_distance(model), error = function(...) NULL),
+        tryCatch(plot_leverage(model), error = function(...) NULL)
+      )
+    )
+  }
+  panels <- Filter(Negate(is.null), panels)
+  if (length(panels) == 0L) {
+    return(results)
+  }
+  combined <- tryCatch(
+    patchwork::wrap_plots(panels, ncol = 2) +
+      patchwork::plot_annotation(title = "Model diagnostics"),
+    error = function(...) NULL
+  )
+  if (is.null(combined)) {
+    return(results)
+  }
+  safe_register_diagnostic(results, output_dir, "diagnostic_panel", function() combined)
 }
 
 generate_diagnostics <- function(model, spec, data, results, output_dir) {
@@ -122,5 +201,6 @@ generate_diagnostics <- function(model, spec, data, results, output_dir) {
     results <- safe_register_diagnostic(results, output_dir, "influence", function() plot_influence(model))
   }
 
-  generate_vif_plot(model, spec, data, results, output_dir)
+  results <- generate_vif_plot(model, spec, data, results, output_dir)
+  generate_combined_panel(model, results, output_dir)
 }
