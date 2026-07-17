@@ -1,3 +1,3 @@
-# linreg_auto
+# infer_auto
 
-Python orchestrator package for the LinReg CLI.
+Python orchestrator package for the infeR CLI.

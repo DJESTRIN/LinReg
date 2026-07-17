@@ -1,4 +1,4 @@
-from linreg_auto.decision import DecisionInputs, build_formula, resolve_decision
+from infer_auto.decision import DecisionInputs, build_formula, resolve_decision
 
 
 def test_build_formula_includes_random_intercept() -> None:

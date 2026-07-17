@@ -1,12 +1,12 @@
-# LinReg TODO
+# infeR TODO
 
-This file mirrors the working task list used to build and extend LinReg. It
+This file mirrors the working task list used to build and extend infeR. It
 is updated as work is requested and completed. "Done" items are kept for
 history; new asks are added under "In progress / Pending" as they come in.
 
 ## In progress / Pending
 
-_(none currently — all requested features implemented and validated)_
+_(none currently â€” all requested features implemented and validated)_
 
 ## Done
 
@@ -36,15 +36,15 @@ _(none currently — all requested features implemented and validated)_
       documented in `CONTRACT.md`. Fixed a real R gotcha along the way:
       `update()` re-evaluates a model's stored call in the *caller's* frame,
       not the model's original fit environment, so `data`/`family` must be
-      forwarded explicitly — covered by new regression tests in
+      forwarded explicitly â€” covered by new regression tests in
       `test_helpers.R`.
 - [x] **Write and maintain this TODO.md**
       Keep this file in sync with the session todo tracker so the task list
       is visible directly in the repo, not just in the working session.
-- [x] Define the Python↔R JSON contract (`CONTRACT.md`): schema for
+- [x] Define the Pythonâ†”R JSON contract (`CONTRACT.md`): schema for
       `analysis_spec.json` / `results.json`, CLI flag reference, model-family
       decision heuristics.
-- [x] Build the Python orchestrator (`python/linreg_auto`): CLI, data
+- [x] Build the Python orchestrator (`python/infer_auto`): CLI, data
       ingestion (csv/xlsx/sql/parquet), wide/long reshaping with shape
       auto-detection, EDA (normality tests, transform selection), the
       model-family decision engine, the R subprocess bridge, and HTML/

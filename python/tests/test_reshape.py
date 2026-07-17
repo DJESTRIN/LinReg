@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from linreg_auto.reshape import detect_shape, to_long, to_wide
+from infer_auto.reshape import detect_shape, to_long, to_wide
 
 
 def test_detect_shape_long_when_id_repeats() -> None:

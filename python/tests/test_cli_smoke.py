@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 from click.testing import CliRunner
 
-from linreg_auto.cli import main
+from infer_auto.cli import main
 
 
 def _make_work_dir() -> Path:

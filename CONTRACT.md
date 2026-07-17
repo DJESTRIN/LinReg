@@ -1,9 +1,9 @@
-# LinReg Python↔R Contract
+# infeR Pythonâ†”R Contract
 
-LinReg is a CLI tool: `linreg run --input data.csv [flags...]`. Python is the
+infeR is a CLI tool: `infer run --input data.csv [flags...]`. Python is the
 orchestrator (CLI, data ingestion, reshaping, EDA, model-family decision,
 report rendering). R is the statistics engine (model fitting, diagnostics,
-post-hoc tests, plots). They communicate through two JSON files on disk —
+post-hoc tests, plots). They communicate through two JSON files on disk â€”
 no rpy2, no shared process. This keeps both sides independently testable and
 Docker-friendly (`Rscript` is just invoked as a subprocess).
 
@@ -17,12 +17,12 @@ Python CLI  --reads-->   <outdir>/results.json --> renders <outdir>/report.html 
 ## Repo layout
 
 ```
-LinReg/
+infeR/
   python/
     pyproject.toml
-    linreg_auto/
+    infer_auto/
       __init__.py
-      cli.py            # click-based CLI, entry point `linreg`
+      cli.py            # click-based CLI, entry point `infer`
       io_data.py         # load csv/xlsx/sql/parquet -> pandas DataFrame
       reshape.py          # wide<->long, detect id/time/measure columns
       eda.py              # normality tests, transform suggestion, distribution detection
@@ -52,14 +52,14 @@ LinReg/
   README.md
 ```
 
-## CLI flags (Python, `linreg run`)
+## CLI flags (Python, `infer run`)
 
 | flag | description |
 |---|---|
 | `--input PATH` | csv/xlsx/parquet path, or `--sql-uri` for a DB connection |
 | `--sheet NAME` | xlsx sheet name |
 | `--sql-uri` / `--sql-query` | alternative to `--input` |
-| `--output-dir DIR` | default `./linreg_results` |
+| `--output-dir DIR` | default `./infer_results` |
 | `--dv NAME[,NAME...]` | dependent variable(s); >1 triggers multivariate path |
 | `--iv NAME[,NAME...]` | independent/fixed-effect variables |
 | `--random-effects NAME[,NAME...]` | grouping variables for mixed models (e.g. subject) |
@@ -72,7 +72,7 @@ LinReg/
 | `--distribution {auto,gaussian,poisson,binomial,gamma,negbinom,tweedie}` | glm family override |
 | `--transform {auto,none,log,sqrt,boxcox,yeojohnson}` | DV transform override |
 | `--formula "y ~ x1*x2 + (1|subject)"` | full override of auto-built formula |
-| `--alpha FLOAT` | significance threshold, default 0.05 — also used to auto-trigger post-hoc tests (see below) |
+| `--alpha FLOAT` | significance threshold, default 0.05 â€” also used to auto-trigger post-hoc tests (see below) |
 | `--posthoc-correction {bonferroni,tukey,holm,none}` | default `bonferroni` |
 | `--posthoc-factors NAME[,NAME...]` | force post-hoc comparisons for specific factors/interactions (e.g. `group,group:time`) regardless of significance; optional, in addition to auto-triggered terms |
 | `--no-auto-posthoc` | disable automatic post-hoc triggering on significant ANOVA terms; only `--posthoc-factors` are tested |
@@ -164,25 +164,25 @@ Wilcoxon comparisons with p-value adjustment.
 
 Post-hoc comparisons are not run blindly for every factor. Instead, after
 fitting the model and computing `anova_table`, R (`R/posthoc.R`) determines
-which terms — **main effects and interactions alike** — are significant at
+which terms â€” **main effects and interactions alike** â€” are significant at
 `spec.alpha` (excluding the intercept) and automatically runs `emmeans`
 pairwise contrasts for each one. For an interaction term such as
 `"group:time"`, the post-hoc comparison spans the full cross of the
 interacting categorical factors (e.g. `emmeans(model, ~ group * time)`),
-not just the marginal main effects — this is what lets you catch "the
+not just the marginal main effects â€” this is what lets you catch "the
 groups differ, but only at certain time points" scenarios.
 
 This behavior is controlled by:
-- `spec.alpha` — the significance threshold (default 0.05).
-- `spec.posthoc.auto` — if `true` (default), auto-trigger post-hoc tests on
+- `spec.alpha` â€” the significance threshold (default 0.05).
+- `spec.posthoc.auto` â€” if `true` (default), auto-trigger post-hoc tests on
   every significant ANOVA term. If `false`, only `spec.posthoc.factors` are
   tested.
-- `spec.posthoc.factors` — an explicit list of factors/interactions that are
+- `spec.posthoc.factors` â€” an explicit list of factors/interactions that are
   **always** tested, regardless of significance (useful for a factor you
   know you want reported even if it lands just above `alpha`).
 
 `results.json.significant_terms` lists every ANOVA term that cleared the
-significance threshold (whether or not post-hoc actually ran for it — e.g.
+significance threshold (whether or not post-hoc actually ran for it â€” e.g.
 a significant continuous-predictor term has no categorical levels to
 contrast, so it's reported here but produces no `posthoc` rows). Each row in
 `results.json.posthoc` carries a `trigger` field: `"explicit"` (from
@@ -202,13 +202,13 @@ model), an Akaike weight, and (where computable) a likelihood-ratio-test
 p-value comparing the reduced model to the full model. This is
 `results.json.term_comparison`.
 
-This scales **linearly** with the number of fixed-effect terms — not
-combinatorially like an exhaustive "dredge" over all term subsets — so it
+This scales **linearly** with the number of fixed-effect terms â€” not
+combinatorially like an exhaustive "dredge" over all term subsets â€” so it
 remains practical even for large models with many predictors. It is
 controlled by:
-- `spec.compare_terms` (default `true`) — set to `false` (`--no-term-comparison`)
+- `spec.compare_terms` (default `true`) â€” set to `false` (`--no-term-comparison`)
   to skip it entirely.
-- An internal cap (`max_terms`, default 15 in `term_drop_comparison()`) —
+- An internal cap (`max_terms`, default 15 in `term_drop_comparison()`) â€”
   if the model has more fixed-effect terms than this, the comparison is
   skipped with a warning rather than silently taking a long time; the user
   is pointed at `--formula` to test specific reduced models by hand instead.
@@ -231,5 +231,5 @@ with the same report component on the Python side.
 9. If `--nonlinear-form` given or user marks relationship nonlinear -> `nonlinear` (`nls`/`nlme`).
 10. `auto` mode always populates `candidate_families` so R can fit >1 and compare AIC when that concept applies.
 
-This file is the single source of truth for the JSON schema — both the
+This file is the single source of truth for the JSON schema â€” both the
 Python and R implementations, and their tests, must conform to it.

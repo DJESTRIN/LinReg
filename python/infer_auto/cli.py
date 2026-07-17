@@ -57,7 +57,7 @@ def _all_transforms_failed(summary: dict) -> bool:
 
 @click.group()
 def main() -> None:
-    """LinReg statistics automation CLI."""
+    """infeR statistics automation CLI."""
 
 
 @main.command()
@@ -65,7 +65,7 @@ def main() -> None:
 @click.option("--sheet")
 @click.option("--sql-uri")
 @click.option("--sql-query")
-@click.option("--output-dir", type=click.Path(path_type=Path), default=Path(".\\linreg_results"))
+@click.option("--output-dir", type=click.Path(path_type=Path), default=Path(".\\infer_results"))
 @click.option("--dv", required=True)
 @click.option("--iv")
 @click.option("--random-effects")

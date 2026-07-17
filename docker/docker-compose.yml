@@ -1,14 +1,14 @@
 services:
-  linreg:
+  infer:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: linreg:latest
+    image: infer:latest
     volumes:
       # Mount your dataset directory and where you want results written.
       - ../examples:/data:ro
       - ./results:/results
     working_dir: /data
-    entrypoint: ["linreg"]
-    # Example invocation (override with `docker compose run linreg run --input ...`):
+    entrypoint: ["infer"]
+    # Example invocation (override with `docker compose run infer run --input ...`):
     command: ["run", "--input", "/data/mtcars.csv", "--dv", "mpg", "--iv", "hp,wt", "--output-dir", "/results/mtcars"]

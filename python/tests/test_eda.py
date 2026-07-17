@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from linreg_auto.eda import detect_distribution, normality_test, suggest_transform, summarize_variable
+from infer_auto.eda import detect_distribution, normality_test, suggest_transform, summarize_variable
 
 
 def test_distribution_detection_variants() -> None:

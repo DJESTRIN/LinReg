@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "linreg_auto"
+name = "infer_auto"
 version = "0.1.0"
-description = "Python orchestrator for LinReg statistics automation"
+description = "Python orchestrator for infeR statistics automation"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -25,11 +25,11 @@ dependencies = [
 dev = ["pytest"]
 
 [project.scripts]
-linreg = "linreg_auto.cli:main"
+infer = "infer_auto.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["linreg_auto*"]
+include = ["infer_auto*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

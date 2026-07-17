@@ -1,9 +1,9 @@
-# LinReg: Python orchestrator + R statistics engine in one image.
+# infeR: Python orchestrator + R statistics engine in one image.
 # Base: rocker/r-ver gives a pinned, reproducible R toolchain with build
 # essentials already configured for compiling CRAN packages (lme4, glmmTMB...).
 FROM rocker/r-ver:4.3.2
 
-LABEL org.opencontainers.image.title="LinReg" \
+LABEL org.opencontainers.image.title="infeR" \
       org.opencontainers.image.description="Automatic statistical analysis pipeline (Python orchestrator + R engine)"
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pandoc \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/linreg
+WORKDIR /opt/infer
 
 # --- R dependencies -----------------------------------------------------
 # Copied and installed first so this (slow) layer is cached independently
@@ -44,5 +44,5 @@ RUN python3 -m pip install -e ./python
 RUN mkdir -p /data /results
 WORKDIR /data
 
-ENTRYPOINT ["linreg"]
+ENTRYPOINT ["infer"]
 CMD ["--help"]

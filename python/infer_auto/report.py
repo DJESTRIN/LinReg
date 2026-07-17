@@ -31,7 +31,7 @@ def _display_value(value: Any) -> str:
 
 
 MD_TEMPLATE = Template(
-    """# LinReg Analysis Report
+    """# infeR Analysis Report
 
 ## Model summary
 
@@ -40,7 +40,7 @@ MD_TEMPLATE = Template(
 - **Backbone package:** {{ results.backbone_package or "N/A" }}
 - **Convergence OK:** {{ results.convergence_ok }}
 - **AIC / BIC / logLik:** {{ aic_display }} / {{ bic_display }} / {{ loglik_display }}
-- **R²:** {{ r_squared_display }}
+- **RÂ²:** {{ r_squared_display }}
 - **Distribution parameters:** {{ distribution_parameters_display }}
 
 {% if nonparametric_test %}
@@ -115,7 +115,7 @@ HTML_TEMPLATE = Template(
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>LinReg Analysis Report</title>
+  <title>infeR Analysis Report</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 2rem; }
     table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }
@@ -127,7 +127,7 @@ HTML_TEMPLATE = Template(
   </style>
 </head>
 <body>
-  <h1>LinReg Analysis Report</h1>
+  <h1>infeR Analysis Report</h1>
   <h2>Model summary</h2>
   <ul>
     <li><strong>Model family:</strong> {{ results.model_family_used or results.model_family }}</li>
@@ -135,7 +135,7 @@ HTML_TEMPLATE = Template(
     <li><strong>Backbone package:</strong> {{ results.backbone_package or "N/A" }}</li>
     <li><strong>Convergence OK:</strong> {{ results.convergence_ok }}</li>
     <li><strong>AIC / BIC / logLik:</strong> {{ aic_display }} / {{ bic_display }} / {{ loglik_display }}</li>
-    <li><strong>R²:</strong> {{ r_squared_display }}</li>
+    <li><strong>RÂ²:</strong> {{ r_squared_display }}</li>
     <li><strong>Distribution parameters:</strong> {{ distribution_parameters_display }}</li>
   </ul>
 

@@ -1,4 +1,4 @@
-"""LinReg Python orchestrator."""
+"""infeR Python orchestrator."""
 
 __all__ = ["__version__"]
 

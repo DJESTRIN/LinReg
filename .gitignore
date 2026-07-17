@@ -14,8 +14,8 @@ dist/
 .Rproj.user/
 *.Rcheck/
 
-# LinReg run outputs
-linreg_results/
+# infeR run outputs
+infer_results/
 *_smoketest/
 docker/results/
 
